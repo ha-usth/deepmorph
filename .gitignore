@@ -1,2 +1,6 @@
 checkpoints/
+data_finetune/
+data_predict/
+data_pretrain/
 predictions/
+visualizations/
