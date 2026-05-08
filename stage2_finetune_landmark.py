@@ -42,11 +42,11 @@ CONFIG = {
 
     # ==== IMAGE SIZE: pretrain 224, finetune 512 ====
     'pretrain_image_size': 224,    # image_size used in stage 1
-    'finetune_image_size': 768,    # image_size for stage 2 (higher = lower MRSE)
+    'finetune_image_size': 512,    # image_size for stage 2 (higher = lower MRSE)
 
     # Heatmap size = finetune_image_size / 4
-    'heatmap_size': 192,            # 384 / 4 = 96
-    'sigma': 3.5,                  # scale with heatmap_size (sigma 2.0 for 56, 3.0 for 128)
+    'heatmap_size': 128,            # 384 / 4 = 96
+    'sigma': 3,                  # scale with heatmap_size (sigma 2.0 for 56, 3.0 for 128)
 
     # Target dataset
     'target_data_dir': './data_finetune/hindwing-100',
@@ -61,7 +61,7 @@ CONFIG = {
     'model_size': 'base',
 
     # Training
-    'batch_size': 4,               # 8 fits 512x512 on 32GB VRAM
+    'batch_size': 8,               # 8 fits 512x512 on 32GB VRAM
     'gradient_accumulation_steps': 4,  # effective batch = 8 * 4 = 32
     'lr_head': 5e-4,
     'lr_encoder': 5e-6,            # lower LR since encoder is already well-pretrained
