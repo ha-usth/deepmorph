@@ -22,10 +22,10 @@ from PIL import Image
 
 # ============== CONFIGURATION ==============
 CONFIG = {
-    'image_dir': './data_predict/droso-new',   # original images + GT .txt files
-    'pred_dir':  './predictions/droso-new',    # predicted .txt files
-    'vis_dir':   './visualizations/droso-new', # output PNG directory
-    'num_landmarks': 12,
+    'image_dir': './data_predict/diacha',   # original images + GT .txt files
+    'pred_dir':  './predictions/diacha',    # predicted .txt files
+    'vis_dir':   './visualizations/diacha', # output PNG directory
+    'num_landmarks': 10,
     'marker_size': 10,   # marker size in points
     'linewidth':   1.5,
 }
@@ -148,14 +148,33 @@ def main():
         return
 
     print(f"Visualizing {len(image_paths)} images -> {vis_dir}")
+
+    all_distances = []   # flat list of per-landmark Euclidean errors
+
     for img_path in image_paths:
         pred_path = pred_dir  / img_path.with_suffix('.txt').name
         gt_path   = image_dir / img_path.with_suffix('.txt').name
         vis_path  = vis_dir   / (img_path.stem + '_vis.png')
 
         visualize(img_path, pred_path, gt_path, vis_path, cfg, show=args.show)
-        print(f"  {img_path.name}")
 
+        # Accumulate per-landmark errors for MRE
+        pred = load_landmarks(pred_path)
+        gt   = load_landmarks(gt_path)
+        if pred is not None and gt is not None:
+            n = min(len(pred), len(gt), cfg['num_landmarks'])
+            dists = np.sqrt(((pred[:n] - gt[:n]) ** 2).sum(axis=1))
+            all_distances.extend(dists.tolist())
+            mre_img = dists.mean()
+            print(f"  {img_path.name}  MRE={mre_img:.2f} px")
+        else:
+            print(f"  {img_path.name}")
+
+    # Overall MRE summary
+    if all_distances:
+        print(f"\n=== MRE Summary ===")
+        print(f"  Images evaluated : {len(image_paths)}")
+        print(f"  Overall MRE      : {np.mean(all_distances):.2f} px")
     print(f"\nDone. Visualizations saved to: {vis_dir}")
 
 

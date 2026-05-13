@@ -6,7 +6,7 @@ Supports a finetune image_size different from the pretrain image_size.
 
 Example:
     Stage 1 pretrain at 224 (fast)
-    Stage 2 finetune at 512 (much lower MRSE)
+    Stage 2 finetune at 512 (much lower MRE)
 
     -> When loading the encoder from stage 1, pos_embed is automatically
        interpolated from 14x14 -> 32x32 patches.
@@ -18,6 +18,7 @@ Usage:
     python stage2_finetune_landmark.py
 """
 import os
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 import sys
 import math
 import torch
@@ -32,28 +33,28 @@ from models.mae import mae_vit_base, mae_vit_small
 from models.landmark_head import WingLandmarkModel
 from models.imagenet_mae_loader import _interpolate_pos_embed
 from datasets.landmark_dataset import LandmarkDataset, select_few_shot_subset
-from utils import set_seed, heatmaps_to_coords, compute_mrse
+from utils import set_seed, heatmaps_to_coords, compute_MRE
 
 
 # ============== RECOMMENDED CONFIG FOR 32GB GPU ==============
 CONFIG = {
     # Path to MAE checkpoint from Stage 1
-    'mae_checkpoint': './checkpoints/mae_pretrain_continue_final.pth',
+    'mae_checkpoint': './checkpoints/mae_pretrain_continue_final_all.pth',
 
     # ==== IMAGE SIZE: pretrain 224, finetune 512 ====
     'pretrain_image_size': 224,    # image_size used in stage 1
-    'finetune_image_size': 512,    # image_size for stage 2 (higher = lower MRSE)
+    'finetune_image_size': 512,    # image_size for stage 2 (higher = lower MRE)
 
     # Heatmap size = finetune_image_size / 4
     'heatmap_size': 128,            # 384 / 4 = 96
-    'sigma': 3,                  # scale with heatmap_size (sigma 2.0 for 56, 3.0 for 128)
+    'sigma': 3,                  # scale with heatmap_size (sigma 2.0 for 96, 3.0 for 128)
 
     # Target dataset
-    'target_data_dir': './data_finetune/hindwing-100',
+    'target_data_dir': './data_pretrain/sea_bass',
 
     # Few-shot setup
-    'n_shots': 64,
-    'num_landmarks': 36,
+    'n_shots': 100,              # number of labeled images for finetuning (3-15 recommended)
+    'num_landmarks': 11,
 
     # Model config
     'patch_size': 16,
@@ -61,7 +62,7 @@ CONFIG = {
     'model_size': 'base',
 
     # Training
-    'batch_size': 8,               # 8 fits 512x512 on 32GB VRAM
+    'batch_size': 2,               # 8 fits 512x512 on 32GB VRAM
     'gradient_accumulation_steps': 4,  # effective batch = 8 * 4 = 32
     'lr_head': 5e-4,
     'lr_encoder': 5e-6,            # lower LR since encoder is already well-pretrained
@@ -155,7 +156,7 @@ def heatmap_loss(pred_heatmaps, gt_heatmaps):
 
 def evaluate(model, dataloader, device, image_size, heatmap_size, use_tta=False):
     """
-    Compute MRSE on the test set.
+    Compute MRE on the test set.
 
     Args:
         use_tta: if True, apply test-time augmentation (horizontal flip)
@@ -170,7 +171,8 @@ def evaluate(model, dataloader, device, image_size, heatmap_size, use_tta=False)
     with torch.no_grad():
         for batch in dataloader:
             imgs = batch['image'].to(device)
-            gt_coords = batch['coords']
+            gt_coords = batch['coords']        # (B, K, 2) at image_size scale
+            orig_sizes = batch['orig_size']    # (B, 2) = [orig_w, orig_h]
 
             heatmaps = model(imgs)
 
@@ -182,10 +184,15 @@ def evaluate(model, dataloader, device, image_size, heatmap_size, use_tta=False)
                 heatmaps = (heatmaps + heatmaps_flipped) / 2
 
             pred_coords = heatmaps_to_coords(heatmaps)
-            pred_coords = pred_coords * scale
+            pred_coords = pred_coords * scale  # → image_size scale
+
+            # Rescale to original image resolution  (B, 1, 2) broadcast over K
+            scale_to_orig = (orig_sizes / image_size).unsqueeze(1).to(pred_coords.device)  # (B, 1, 2)
+            pred_coords = pred_coords * scale_to_orig
+            gt_coords   = gt_coords.to(pred_coords.device) * scale_to_orig
 
             all_pred_coords.append(pred_coords.cpu())
-            all_gt_coords.append(gt_coords)
+            all_gt_coords.append(gt_coords.cpu())
 
     if not all_pred_coords:
         return None, float('inf')
@@ -193,8 +200,8 @@ def evaluate(model, dataloader, device, image_size, heatmap_size, use_tta=False)
     all_pred = torch.cat(all_pred_coords, dim=0)
     all_gt = torch.cat(all_gt_coords, dim=0)
 
-    mrse_per_lm, mrse_overall = compute_mrse(all_pred, all_gt)
-    return mrse_per_lm, mrse_overall
+    MRE_per_lm, MRE_overall = compute_MRE(all_pred, all_gt)
+    return MRE_per_lm, MRE_overall
 
 
 def train_one_epoch(model, dataloader, optimizer, device, accum_steps=1):
@@ -300,7 +307,7 @@ def main():
                       weight_decay=config['weight_decay'])
 
     # ===== 6. Training loop =====
-    best_mrse = float('inf')
+    best_MRE = float('inf')
 
     for epoch in range(config['epochs']):
         # Unfreeze encoder after N epochs
@@ -321,35 +328,35 @@ def main():
 
         # Periodic eval
         if (epoch + 1) % config['eval_every'] == 0:
-            mrse_per_lm, mrse_overall = evaluate(
+            MRE_per_lm, MRE_overall = evaluate(
                 model, test_loader, config['device'],
                 config['finetune_image_size'], config['heatmap_size'],
                 use_tta=config['use_tta'],
             )
 
-            if mrse_per_lm is None:
+            if MRE_per_lm is None:
                 print(f"Epoch {epoch}: loss={train_loss:.4f} (test set is empty)")
             else:
                 if torch.cuda.is_available():
                     peak_mem = torch.cuda.max_memory_allocated() / (1024**3)
                     print(f"Epoch {epoch}: loss={train_loss:.4f}, "
-                          f"MRSE={mrse_overall:.2f}, peak_mem={peak_mem:.1f}GB")
+                          f"MRE={MRE_overall:.2f}, peak_mem={peak_mem:.1f}GB")
                 else:
-                    print(f"Epoch {epoch}: loss={train_loss:.4f}, MRSE={mrse_overall:.2f}")
+                    print(f"Epoch {epoch}: loss={train_loss:.4f}, MRE={MRE_overall:.2f}")
 
-                if mrse_overall < best_mrse:
-                    best_mrse = mrse_overall
+                if MRE_overall < best_MRE:
+                    best_MRE = MRE_overall
                     ckpt_path = os.path.join(
                         config['save_dir'],
                         f"finetune_best_n{config['n_shots']}_size{config['finetune_image_size']}.pth"
                     )
                     torch.save({
                         'model_state_dict': model.state_dict(),
-                        'mrse': mrse_overall,
-                        'mrse_per_lm': mrse_per_lm,
+                        'MRE': MRE_overall,
+                        'MRE_per_lm': MRE_per_lm,
                         'config': config,
                     }, ckpt_path)
-                    print(f"  Saved best: MRSE={mrse_overall:.2f}")
+                    print(f"  Saved best: MRE={MRE_overall:.2f}")
         else:
             print(f"Epoch {epoch}: loss={train_loss:.4f}")
 
@@ -357,12 +364,7 @@ def main():
     print(f"\n=== FINAL RESULTS ===")
     print(f"  Finetune image_size: {config['finetune_image_size']}")
     print(f"  N-shot: {config['n_shots']}")
-    print(f"  Best MRSE: {best_mrse:.2f} pixels (at scale {config['finetune_image_size']})")
-
-    # Scale to original dataset resolution for comparison with iMorph paper
-    print(f"\n  To compare with iMorph paper (Droso-small 1400x900):")
-    scale_to_orig = 1400 / config['finetune_image_size']
-    print(f"  MRSE at original resolution ~= {best_mrse * scale_to_orig:.2f} pixels")
+    print(f"  Best MRE: {best_MRE:.2f} pixels (at original image resolution)")
 
 
 if __name__ == '__main__':

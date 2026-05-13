@@ -6,6 +6,7 @@ Format matches iMorph: each image has a .txt file with the same name
 containing landmark coordinates.
 """
 import os
+import math
 from pathlib import Path
 from PIL import Image
 import numpy as np
@@ -16,6 +17,46 @@ from torchvision import transforms
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils import generate_heatmap
+
+
+def _random_affine_augment(img, landmarks, image_size,
+                            scale_range=(-0.05, 0.05),
+                            translate_range=(-0.05, 0.05),
+                            rotate_range=(-22.0, 22.0)):
+    """
+    Apply random scale, translation, and rotation to a PIL image and its landmarks.
+    All transforms are composed into a single affine warp applied around the image center.
+    """
+    W, H = img.size  # both equal image_size after resize
+    cx, cy = W / 2.0, H / 2.0
+
+    scale = 1.0 + np.random.uniform(*scale_range)
+    tx    = np.random.uniform(*translate_range) * W
+    ty    = np.random.uniform(*translate_range) * H
+    theta = math.radians(np.random.uniform(*rotate_range))
+    cos_t, sin_t = math.cos(theta), math.sin(theta)
+
+    # Forward 3x3 affine: scale+rotate around center, then translate
+    M = np.array([
+        [scale*cos_t, -scale*sin_t, cx*(1 - scale*cos_t) + cy*scale*sin_t + tx],
+        [scale*sin_t,  scale*cos_t, cy*(1 - scale*cos_t) - cx*scale*sin_t + ty],
+        [0.0,          0.0,          1.0],
+    ], dtype=np.float64)
+
+    # PIL AFFINE maps output → input, so pass the inverse
+    M_inv = np.linalg.inv(M)
+    img = img.transform(
+        img.size, Image.AFFINE,
+        M_inv[:2].flatten().tolist(),
+        resample=Image.BILINEAR,
+    )
+
+    # Apply forward transform to landmark coordinates
+    K = len(landmarks)
+    pts = np.concatenate([landmarks, np.ones((K, 1))], axis=1).T  # (3, K)
+    landmarks = (M @ pts).T[:, :2]                                  # (K, 2)
+
+    return img, landmarks
 
 
 class LandmarkDataset(Dataset):
@@ -110,11 +151,14 @@ class LandmarkDataset(Dataset):
         landmarks_scaled[:, 0] *= scale_x
         landmarks_scaled[:, 1] *= scale_y
 
-        # Simple augmentation: horizontal flip with probability 0.5
-        # (note: flip requires swapping landmark indices if dataset is left-right symmetric)
-        if self.augment and np.random.rand() < 0.5:
-            img = img.transpose(Image.FLIP_LEFT_RIGHT)
-            landmarks_scaled[:, 0] = self.image_size - landmarks_scaled[:, 0]
+        if self.augment:
+            # Horizontal flip with probability 0.5
+            # if np.random.rand() < 0.5:
+            #     img = img.transpose(Image.FLIP_LEFT_RIGHT)
+            #     landmarks_scaled[:, 0] = self.image_size - landmarks_scaled[:, 0]
+
+            # Scale / translate / rotate
+            img, landmarks_scaled = _random_affine_augment(img, landmarks_scaled, self.image_size)
 
         # Convert to tensor + normalize
         img = np.array(img).astype(np.float32) / 255.0
@@ -141,6 +185,7 @@ class LandmarkDataset(Dataset):
             'image': img,
             'heatmaps': heatmaps,
             'coords': coords_target,  # (K, 2) at image_size scale
+            'orig_size': torch.tensor([orig_w, orig_h], dtype=torch.float32),  # (2,)
         }
 
 

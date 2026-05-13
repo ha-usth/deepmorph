@@ -10,6 +10,7 @@ Usage:
     python stage2_finetune_landmark_reg.py
 """
 import os
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 import sys
 import math
 import torch
@@ -25,7 +26,7 @@ from models.mae import mae_vit_base, mae_vit_small
 from models.imagenet_mae_loader import _interpolate_pos_embed
 from models.regression_head import RegressionLandmarkModel
 from datasets.landmark_dataset import LandmarkDataset, select_few_shot_subset
-from utils import set_seed, compute_mrse
+from utils import set_seed, compute_MRE
 
 
 # ============================================================
@@ -122,7 +123,7 @@ def load_pretrained_encoder_with_resize(checkpoint_path, target_image_size,
 
 
 def evaluate(model, dataloader, device, image_size):
-    """MRSE at image_size scale (for fair comparison with heatmap variant)."""
+    """MRE at image_size scale (for fair comparison with heatmap variant)."""
     model.eval()
     all_pred, all_gt = [], []
 
@@ -142,7 +143,7 @@ def evaluate(model, dataloader, device, image_size):
 
     all_pred = torch.cat(all_pred, dim=0)
     all_gt   = torch.cat(all_gt,   dim=0)
-    return compute_mrse(all_pred, all_gt)
+    return compute_MRE(all_pred, all_gt)
 
 
 def train_one_epoch(model, dataloader, optimizer, device, image_size, accum_steps=1):
@@ -241,7 +242,7 @@ def main():
                       weight_decay=config['weight_decay'])
 
     # 5. Training loop
-    best_mrse = float('inf')
+    best_MRE = float('inf')
 
     for epoch in range(config['epochs']):
         if epoch == config['freeze_encoder_epochs']:
@@ -260,24 +261,24 @@ def main():
         )
 
         if (epoch + 1) % config['eval_every'] == 0:
-            mrse_per_lm, mrse_overall = evaluate(
+            MRE_per_lm, MRE_overall = evaluate(
                 model, test_loader, config['device'],
                 image_size=config['finetune_image_size'],
             )
 
-            if mrse_per_lm is None:
+            if MRE_per_lm is None:
                 print(f"Epoch {epoch}: loss={train_loss:.4f} (test set is empty)")
             else:
                 if torch.cuda.is_available():
                     peak_mem = torch.cuda.max_memory_allocated() / (1024 ** 3)
                     print(f"Epoch {epoch}: loss={train_loss:.4f}, "
-                          f"MRSE={mrse_overall:.2f}, peak_mem={peak_mem:.1f}GB")
+                          f"MRE={MRE_overall:.2f}, peak_mem={peak_mem:.1f}GB")
                 else:
                     print(f"Epoch {epoch}: loss={train_loss:.4f}, "
-                          f"MRSE={mrse_overall:.2f}")
+                          f"MRE={MRE_overall:.2f}")
 
-                if mrse_overall < best_mrse:
-                    best_mrse = mrse_overall
+                if MRE_overall < best_MRE:
+                    best_MRE = MRE_overall
                     ckpt_path = os.path.join(
                         config['save_dir'],
                         f"finetune_reg_best_n{config['n_shots']}"
@@ -285,12 +286,12 @@ def main():
                     )
                     torch.save({
                         'model_state_dict': model.state_dict(),
-                        'mrse': mrse_overall,
-                        'mrse_per_lm': mrse_per_lm,
+                        'MRE': MRE_overall,
+                        'MRE_per_lm': MRE_per_lm,
                         'config': config,
                         'head_type': 'regression',
                     }, ckpt_path)
-                    print(f"  Saved best: MRSE={mrse_overall:.2f}")
+                    print(f"  Saved best: MRE={MRE_overall:.2f}")
         else:
             print(f"Epoch {epoch}: loss={train_loss:.4f}")
 
@@ -298,7 +299,7 @@ def main():
     print(f"\n=== FINAL RESULTS (Regression) ===")
     print(f"  N-shot         : {config['n_shots']}")
     print(f"  Image size     : {config['finetune_image_size']}")
-    print(f"  Best MRSE      : {best_mrse:.2f} px  (at {config['finetune_image_size']}px scale)")
+    print(f"  Best MRE      : {best_MRE:.2f} px  (at {config['finetune_image_size']}px scale)")
 
 
 if __name__ == '__main__':

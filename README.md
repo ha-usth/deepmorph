@@ -80,7 +80,7 @@ Edit `CONFIG` in `stage2_finetune_landmark.py`:
 python stage2_finetune_landmark.py
 ```
 
-Output: `checkpoints/finetune_best_n{N}.pth` + MRSE report.
+Output: `checkpoints/finetune_best_n{N}.pth` + MRE report.
 
 **Time**: ~10–30 minutes per configuration.
 
@@ -124,10 +124,10 @@ Run Stage 2+3 for 5 datasets from the original paper:
 
 ## Important Notes
 
-### On the MRSE metric
-MRSE is measured at `image_size=224`. To **compare with the original paper**, rescale:
+### On the MRE metric
+MRE is measured at `image_size=224`. To **compare with the original paper**, rescale:
 ```python
-mrse_original_resolution = mrse_at_224 * (original_resolution / 224)
+MRE_original_resolution = MRE_at_224 * (original_resolution / 224)
 ```
 Example for Droso-small (1400×900): scale ≈ 1400/224 ≈ 6.25.
 
@@ -147,7 +147,7 @@ Be careful: if pretraining uses the same dataset as fine-tuning (e.g. pretrain o
 insect_wing_mae/
 ├── README.md                     # This file
 ├── requirements.txt
-├── utils.py                      # Heatmap, MRSE, helpers
+├── utils.py                      # Heatmap, MRE, helpers
 ├── stage1_pretrain_mae.py        # Stage 1 script
 ├── stage2_finetune_landmark.py   # Stage 2 script
 ├── stage3_predict.py             # Stage 3 script
