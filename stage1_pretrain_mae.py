@@ -15,6 +15,7 @@ Usage:
     python stage1_pretrain_mae.py
 """
 import os
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 import sys
 import math
 import torch
@@ -44,14 +45,18 @@ CONFIG = {
     # DATA
     # =========================================================================
     'data_dirs': [
-        './data_pretrain/bactro',
-        './data_pretrain/diacha',
-        './data_pretrain/droso_big',
-        './data_pretrain/droso-281',
-        './data_pretrain/droso_small',
-        './data_pretrain/fly',
-        './data_pretrain/hindwing',
-        './data_pretrain/sea_bass'
+        # './data_pretrain/bactro',
+        # './data_pretrain/diacha',
+        # './data_pretrain/droso_big',
+        # './data_pretrain/droso-281',
+        # './data_pretrain/droso_small',
+        # './data_pretrain/fly',
+        # './data_pretrain/hindwing',
+        './data_pretrain/sea_bass',
+        # './data_pretrain/tsetse',
+        # './data_pretrain/cepha',
+        # './data_pretrain/cepha400',
+
     ],
     'image_size': 224,           # must be 224 if continue_from_imagenet
                                   # (or the model will interpolate pos_embed)
@@ -59,7 +64,7 @@ CONFIG = {
     # =========================================================================
     # TRAINING
     # =========================================================================
-    'batch_size': 64,
+    'batch_size': 32,
     'num_workers': 4,
     'lr': 1.5e-4,
     'weight_decay': 0.05,

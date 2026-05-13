@@ -74,9 +74,9 @@
     {
       "n_shot": 1,
       "seed_idx": 0,
-      "best_mrse_finetune_scale": 211.57106018066406,
-      "best_mrse_original_scale": 578.5146176815033,
-      "best_mrse_per_landmark_finetune_scale": [
+      "best_MRE_finetune_scale": 211.57106018066406,
+      "best_MRE_original_scale": 578.5146176815033,
+      "best_MRE_per_landmark_finetune_scale": [
         336.8643493652344,
         150.31393432617188,
         135.49220275878906,
@@ -98,9 +98,9 @@
     {
       "n_shot": 1,
       "seed_idx": 1,
-      "best_mrse_finetune_scale": 174.48524475097656,
-      "best_mrse_original_scale": 477.10809111595154,
-      "best_mrse_per_landmark_finetune_scale": [
+      "best_MRE_finetune_scale": 174.48524475097656,
+      "best_MRE_original_scale": 477.10809111595154,
+      "best_MRE_per_landmark_finetune_scale": [
         143.7923126220703,
         114.9416275024414,
         83.89347839355469,
@@ -122,9 +122,9 @@
     {
       "n_shot": 1,
       "seed_idx": 2,
-      "best_mrse_finetune_scale": 191.81103515625,
-      "best_mrse_original_scale": 524.4832992553711,
-      "best_mrse_per_landmark_finetune_scale": [
+      "best_MRE_finetune_scale": 191.81103515625,
+      "best_MRE_original_scale": 524.4832992553711,
+      "best_MRE_per_landmark_finetune_scale": [
         163.451904296875,
         157.19808959960938,
         101.78248596191406,
@@ -146,9 +146,9 @@
     {
       "n_shot": 3,
       "seed_idx": 0,
-      "best_mrse_finetune_scale": 205.66726684570312,
-      "best_mrse_original_scale": 562.3714327812195,
-      "best_mrse_per_landmark_finetune_scale": [
+      "best_MRE_finetune_scale": 205.66726684570312,
+      "best_MRE_original_scale": 562.3714327812195,
+      "best_MRE_per_landmark_finetune_scale": [
         334.9994812011719,
         139.4596405029297,
         137.1642303466797,
@@ -170,9 +170,9 @@
     {
       "n_shot": 3,
       "seed_idx": 1,
-      "best_mrse_finetune_scale": 183.99734497070312,
-      "best_mrse_original_scale": 503.11774015426636,
-      "best_mrse_per_landmark_finetune_scale": [
+      "best_MRE_finetune_scale": 183.99734497070312,
+      "best_MRE_original_scale": 503.11774015426636,
+      "best_MRE_per_landmark_finetune_scale": [
         152.38131713867188,
         119.60182189941406,
         89.47069549560547,
@@ -194,9 +194,9 @@
     {
       "n_shot": 3,
       "seed_idx": 2,
-      "best_mrse_finetune_scale": 191.85191345214844,
-      "best_mrse_original_scale": 524.5950758457184,
-      "best_mrse_per_landmark_finetune_scale": [
+      "best_MRE_finetune_scale": 191.85191345214844,
+      "best_MRE_original_scale": 524.5950758457184,
+      "best_MRE_per_landmark_finetune_scale": [
         170.65841674804688,
         144.8939971923828,
         99.56858825683594,
@@ -218,9 +218,9 @@
     {
       "n_shot": 6,
       "seed_idx": 0,
-      "best_mrse_finetune_scale": 206.34603881835938,
-      "best_mrse_original_scale": 564.2274498939514,
-      "best_mrse_per_landmark_finetune_scale": [
+      "best_MRE_finetune_scale": 206.34603881835938,
+      "best_MRE_original_scale": 564.2274498939514,
+      "best_MRE_per_landmark_finetune_scale": [
         326.3530578613281,
         132.09986877441406,
         138.82716369628906,
@@ -242,9 +242,9 @@
     {
       "n_shot": 6,
       "seed_idx": 1,
-      "best_mrse_finetune_scale": 180.72659301757812,
-      "best_mrse_original_scale": 494.1742777824402,
-      "best_mrse_per_landmark_finetune_scale": [
+      "best_MRE_finetune_scale": 180.72659301757812,
+      "best_MRE_original_scale": 494.1742777824402,
+      "best_MRE_per_landmark_finetune_scale": [
         147.8919219970703,
         117.42244720458984,
         86.43668365478516,
@@ -266,9 +266,9 @@
     {
       "n_shot": 6,
       "seed_idx": 2,
-      "best_mrse_finetune_scale": 188.5696563720703,
-      "best_mrse_original_scale": 515.6201541423798,
-      "best_mrse_per_landmark_finetune_scale": [
+      "best_MRE_finetune_scale": 188.5696563720703,
+      "best_MRE_original_scale": 515.6201541423798,
+      "best_MRE_per_landmark_finetune_scale": [
         167.84742736816406,
         131.83804321289062,
         103.1981430053711,
@@ -290,9 +290,9 @@
     {
       "n_shot": 11,
       "seed_idx": 0,
-      "best_mrse_finetune_scale": 205.209716796875,
-      "best_mrse_original_scale": 561.1203193664551,
-      "best_mrse_per_landmark_finetune_scale": [
+      "best_MRE_finetune_scale": 205.209716796875,
+      "best_MRE_original_scale": 561.1203193664551,
+      "best_MRE_per_landmark_finetune_scale": [
         321.1722717285156,
         132.0313262939453,
         136.3983154296875,
@@ -314,9 +314,9 @@
     {
       "n_shot": 11,
       "seed_idx": 1,
-      "best_mrse_finetune_scale": 181.232666015625,
-      "best_mrse_original_scale": 495.5580711364746,
-      "best_mrse_per_landmark_finetune_scale": [
+      "best_MRE_finetune_scale": 181.232666015625,
+      "best_MRE_original_scale": 495.5580711364746,
+      "best_MRE_per_landmark_finetune_scale": [
         151.88291931152344,
         118.48361206054688,
         87.50347900390625,
@@ -338,9 +338,9 @@
     {
       "n_shot": 11,
       "seed_idx": 2,
-      "best_mrse_finetune_scale": 189.9607391357422,
-      "best_mrse_original_scale": 519.423896074295,
-      "best_mrse_per_landmark_finetune_scale": [
+      "best_MRE_finetune_scale": 189.9607391357422,
+      "best_MRE_original_scale": 519.423896074295,
+      "best_MRE_per_landmark_finetune_scale": [
         167.7267608642578,
         139.90640258789062,
         104.01976776123047,
@@ -362,9 +362,9 @@
     {
       "n_shot": 20,
       "seed_idx": 0,
-      "best_mrse_finetune_scale": 201.7859649658203,
-      "best_mrse_original_scale": 551.7584979534149,
-      "best_mrse_per_landmark_finetune_scale": [
+      "best_MRE_finetune_scale": 201.7859649658203,
+      "best_MRE_original_scale": 551.7584979534149,
+      "best_MRE_per_landmark_finetune_scale": [
         298.2916564941406,
         129.08078002929688,
         140.7827606201172,
@@ -386,9 +386,9 @@
     {
       "n_shot": 20,
       "seed_idx": 1,
-      "best_mrse_finetune_scale": 188.6417236328125,
-      "best_mrse_original_scale": 515.8172130584717,
-      "best_mrse_per_landmark_finetune_scale": [
+      "best_MRE_finetune_scale": 188.6417236328125,
+      "best_MRE_original_scale": 515.8172130584717,
+      "best_MRE_per_landmark_finetune_scale": [
         145.87582397460938,
         120.47290802001953,
         117.4789810180664,
@@ -410,9 +410,9 @@
     {
       "n_shot": 20,
       "seed_idx": 2,
-      "best_mrse_finetune_scale": 189.4113006591797,
-      "best_mrse_original_scale": 517.9215252399445,
-      "best_mrse_per_landmark_finetune_scale": [
+      "best_MRE_finetune_scale": 189.4113006591797,
+      "best_MRE_original_scale": 517.9215252399445,
+      "best_MRE_per_landmark_finetune_scale": [
         162.63836669921875,
         141.73550415039062,
         103.41876220703125,

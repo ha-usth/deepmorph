@@ -8,6 +8,7 @@ Usage:
     python stage3_predict.py
 """
 import os
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 import sys
 from pathlib import Path
 import torch
@@ -20,21 +21,22 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from models.mae import mae_vit_base, mae_vit_small
 from models.landmark_head import WingLandmarkModel
 from models.regression_head import RegressionLandmarkModel
-from utils import heatmaps_to_coords, compute_mrse
+from utils import heatmaps_to_coords, compute_MRE
+
 
 
 # ============== CONFIGURATION ==============
 CONFIG = {
-    'finetune_checkpoint': './checkpoints/finetune_best_n32_size768.pth',
-    'input_dir': './data_predict/hindwing',     # directory of images to predict
-    'output_dir': './predictions/hindwing',     # directory to save .txt files
+    'finetune_checkpoint': './checkpoints/finetune_droso-281_best_n100_size512.pth',
+    'input_dir': './data_predict/droso-281',     # directory of images to predict
+    'output_dir': './predictions/droso-281',     # directory to save .txt files
 
     # Must match training config
-    'image_size': 768,
-    'heatmap_size': 192,
+    'image_size': 512,
+    'heatmap_size': 128,   # 384 / 4 = 96
     'patch_size': 16,
     'embed_dim': 768,
-    'num_landmarks': 36,
+    'num_landmarks': 12,
     'model_size': 'base',
 
     'device': 'cuda' if torch.cuda.is_available() else 'cpu',
@@ -74,8 +76,8 @@ def load_finetuned_model(ckpt_path, config):
 
     model.load_state_dict(ckpt['model_state_dict'])
     model.eval()
-    if 'mrse' in ckpt:
-        print(f"  (Test MRSE at save time: {ckpt['mrse']:.2f})")
+    if 'MRE' in ckpt:
+        print(f"  (Test MRE at save time: {ckpt['MRE']:.2f})")
     return model
 
 
@@ -179,18 +181,18 @@ def main():
 
     print(f"\nDone. Results saved to: {config['output_dir']}")
 
-    # ===== MRSE =====
+    # ===== MRE =====
     if all_pred:
         pred_t = torch.from_numpy(np.stack(all_pred))  # (N, K, 2)
         gt_t   = torch.from_numpy(np.stack(all_gt))    # (N, K, 2)
-        mrse_per_lm, mrse_overall = compute_mrse(pred_t, gt_t)
+        MRE_per_lm, MRE_overall = compute_MRE(pred_t, gt_t)
 
-        print(f"\n=== MRSE (original resolution, px) — N={len(all_pred)} images ===")
-        print(f"Overall : {mrse_overall.item():.2f} px")
-        for i, v in enumerate(mrse_per_lm):
+        print(f"\n=== MRE (original resolution, px) — N={len(all_pred)} images ===")
+        print(f"Overall : {MRE_overall.item():.2f} px")
+        for i, v in enumerate(MRE_per_lm):
             print(f"  LM {i+1:02d}: {v.item():.2f} px")
     else:
-        print("\n(No GT .txt files found in input_dir — skipping MRSE.)")
+        print("\n(No GT .txt files found in input_dir — skipping MRE.)")
 
 
 if __name__ == '__main__':
