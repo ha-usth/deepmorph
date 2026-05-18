@@ -44,7 +44,7 @@ Recommended data sources:
 ### Stage 2 (fine-tuning): labeled images
 iMorph format:
 ```
-Bactro/
+droso_big/
 ├── 001.bmp
 ├── 001.txt    # one line per landmark: "x y"
 ├── 002.bmp
