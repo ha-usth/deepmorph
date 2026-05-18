@@ -31,21 +31,21 @@ from utils import set_seed, compute_MRE
 
 # ============================================================
 CONFIG = {
-    'mae_checkpoint': './checkpoints/mae_pretrain_continue_final.pth',
+    'mae_checkpoint': './checkpoints/mae_pretrain_continue_final_all.pth',
 
     'pretrain_image_size': 224,
-    'finetune_image_size': 384,
+    'finetune_image_size': 512,
 
-    'target_data_dir': './data_finetune/droso-new',
+    'target_data_dir': './data_finetune/sea_bass',
 
-    'n_shots': 15,
-    'num_landmarks': 12,
+    'n_shots': 100,
+    'num_landmarks': 11,
 
     'patch_size': 16,
     'embed_dim': 768,
     'model_size': 'base',
 
-    'batch_size': 8,
+    'batch_size': 2,
     'gradient_accumulation_steps': 4,
     'lr_head': 5e-4,
     'lr_encoder': 5e-6,
@@ -203,20 +203,22 @@ def main():
         sigma=2.0,
         augment=True,
     )
-    test_dataset = LandmarkDataset(
-        data_dir=config['target_data_dir'],
-        image_list=test_list,
-        num_landmarks=config['num_landmarks'],
-        image_size=config['finetune_image_size'],
-        heatmap_size=config['finetune_image_size'] // 4,
-        sigma=2.0,
-        augment=False,
-    )
-
     train_loader = DataLoader(train_dataset, batch_size=config['batch_size'],
                               shuffle=True,  num_workers=0)
-    test_loader  = DataLoader(test_dataset,  batch_size=config['batch_size'],
-                              shuffle=False, num_workers=0)
+
+    test_loader = None
+    if test_list:
+        test_dataset = LandmarkDataset(
+            data_dir=config['target_data_dir'],
+            image_list=test_list,
+            num_landmarks=config['num_landmarks'],
+            image_size=config['finetune_image_size'],
+            heatmap_size=config['finetune_image_size'] // 4,
+            sigma=2.0,
+            augment=False,
+        )
+        test_loader = DataLoader(test_dataset, batch_size=config['batch_size'],
+                                 shuffle=False, num_workers=0)
 
     # 3. Model
     mae = load_pretrained_encoder_with_resize(
@@ -261,6 +263,10 @@ def main():
         )
 
         if (epoch + 1) % config['eval_every'] == 0:
+            if test_loader is None:
+                print(f"Epoch {epoch}: loss={train_loss:.4f} (no test set)")
+                continue
+
             MRE_per_lm, MRE_overall = evaluate(
                 model, test_loader, config['device'],
                 image_size=config['finetune_image_size'],

@@ -16,33 +16,59 @@ import time
 from pathlib import Path
 
 # ── Configuration ──────────────────────────────────────────────────────────────
+# n_shots_list     = [5] 
+# dataset          = 'cepha'       # must match the folder name used in stage2
+# num_landmarks    = 19
+# image_size       = 512
+# heatmap_size     = 128
+
 # n_shots_list     = [3, 5, 7, 9, 10, 15, 20] #Bactro
-# dataset          = 'diacha'       # must match the folder name used in stage2
+# dataset          = 'bactro'       # must match the folder name used in stage2
 #num_landmarks    = 12
 # image_size       = 512
 # heatmap_size     = 128
 
-# n_shots_list     = [20, 30, 150, 300, 500] #Tsetse
-# dataset          = 'tsetse'       # must match the folder name used in stage2
-# num_landmarks    = 11
-# image_size       = 512
-# heatmap_size     = 128
-
-# n_shots_list     = [3, 5, 7, 9, 10, 15, 20] #Bactro
+# n_shots_list     = [3, 5, 7, 10, 15, 20, 30] #
 # dataset          = 'diacha'       # must match the folder name used in stage2
 # num_landmarks    = 10
 # image_size       = 512
 # heatmap_size     = 128
 
-# n_shots_list     = [100] #Tsetse
+# n_shots_list     = [5, 7, 10, 15, 20, 30, 150, 300, 500] #Tsetse
+# dataset          = 'tsetse'       # must match the folder name used in stage2
+# num_landmarks    = 11
+# image_size       = 512
+# heatmap_size     = 128
+
+# n_shots_list     = [3, 5, 7, 9, 10, 15, 20] #
+# dataset          = 'diacha'       # must match the folder name used in stage2
+# num_landmarks    = 10
+# image_size       = 512
+# heatmap_size     = 128
+
+# n_shots_list     = [3, 5, 7, 10, 15, 20] 
 # dataset          = 'sea_bass'       # must match the folder name used in stage2
 # num_landmarks    = 11
 # image_size       = 512
 # heatmap_size     = 128
 
-n_shots_list     = [3, 5, 7, 10, 15, 20, 30, 50, 70, 80, 100] #droso-281
-dataset          = 'sea_bass'       # must match the folder name used in stage2
-num_landmarks    = 11
+# n_shots_list     = [3,5, 7, 10, 15, 20, 25]
+# dataset          = 'droso-281'       # must match the folder name used in stage2
+# num_landmarks    = 12
+# image_size       = 512
+# heatmap_size     = 128
+
+
+
+# n_shots_list     = [3, 4, 5, 6, 8, 10] 
+# dataset          = 'fly'       # must match the folder name used in stage2
+# num_landmarks    = 10
+# image_size       = 512
+# heatmap_size     = 128
+
+n_shots_list     = [3,5, 7, 10, 15, 20, 25]
+dataset          = 'droso_big'       # must match the folder name used in stage2
+num_landmarks    = 15
 image_size       = 512
 heatmap_size     = 128
 
@@ -93,6 +119,7 @@ def run_predict(n_shots):
         '--heatmap_size',  str(heatmap_size),
         '--model_size',    model_size,
         '--embed_dim',     str(embed_dim),
+        '--max_test', str(0)
     ]
 
     print(f"\n{'='*60}")

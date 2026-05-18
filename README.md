@@ -24,9 +24,9 @@ Requirements: GPU with ≥8GB VRAM (≥16GB recommended for ViT-Base).
 ## Data Preparation
 
 ### Stage 1 (pretraining): unlabeled images
-Folders only need to contain image files (.jpg, .png, .bmp, etc.):
+Folders only need to contain image files (.jpg, .png, .bmp, etc.). The annotation files (.txt) will be ignored during pretraining.
 ```
-data_pretrain/
+train_pool/
 ├── droso_big/
 │   ├── 0001.bmp
 │   └── ...
@@ -36,6 +36,7 @@ data_pretrain/
 ```
 
 Recommended data sources:
+- **iMorph datasets: droso-small, droso-big, ...**: https://github.com/morphometrics/iMorph
 - **Droso-big**: https://gigadb.org/dataset/100706
 - **Mosquito repository (Nolte 2025)**: https://www.nature.com/articles/s41597-025-05043-3
 - Other datasets from your original paper
@@ -99,49 +100,6 @@ Can be opened in iMorph GUI for manual correction.
 
 ## Experimental Design for Paper
 
-### Main Comparison Table (proposed)
-
-| Method | Pretrain data | n=1 | n=3 | n=5 | n=10 | n=15 |
-|---|---|---|---|---|---|---|
-| iMorph (original) | - | x.x | x.x | x.x | x.x | x.x |
-| ViT + ImageNet | ImageNet | x.x | x.x | x.x | x.x | x.x |
-| **MAE-Wing (ours)** | **Wing images** | **x.x** | **x.x** | **x.x** | **x.x** | **x.x** |
-
-### Evaluation Datasets
-Run Stage 2+3 for 5 datasets from the original paper:
-- Droso-small (15 landmarks)
-- Droso-big (15 landmarks)
-- Fly (10 landmarks)
-- Bactro (12 landmarks)
-- Diacha (10 landmarks)
-
-### Recommended Ablation Studies
-1. **Mask ratio**: 50%, 60%, 75%, 85%
-2. **Pretrain data size**: 1K, 5K, 10K, 20K images
-3. **Encoder freeze vs unfreeze**
-4. **Model size**: ViT-Small vs ViT-Base
-5. **Heatmap sigma**: 1, 2, 3, 4
-
-## Important Notes
-
-### On the MRE metric
-MRE is measured at `image_size=224`. To **compare with the original paper**, rescale:
-```python
-MRE_original_resolution = MRE_at_224 * (original_resolution / 224)
-```
-Example for Droso-small (1400×900): scale ≈ 1400/224 ≈ 6.25.
-
-### On data leakage
-Be careful: if pretraining uses the same dataset as fine-tuning (e.g. pretrain on Droso-big then fine-tune on Droso-small), this must be clearly explained in the paper. Recommended split:
-- Pretrain on: Droso-big + mosquito + others
-- Fine-tune on: Droso-small / Fly / Bactro / Diacha (not included in pretrain)
-
-### On reproducibility
-- Set seed (already in code)
-- Save config into checkpoint (already done)
-- Run each setting 3–5 times with different seeds, report mean ± std
-
-## File Structure
 
 ```
 insect_wing_mae/

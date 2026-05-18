@@ -15,8 +15,8 @@ n_shots_list = [3,5, 7, 10, 15, 20, 25]
 
 # Common arguments (adjust as needed)
 mae_checkpoint = './checkpoints/mae_pretrain_continue_final_all.pth'
-data_dir = './data_finetune/droso-281'
-num_landmarks = 12
+data_dir = './data_finetune/droso_big'
+num_landmarks = 15
 finetune_image_size = 512
 heatmap_size = 128
 save_dir = './checkpoints'
