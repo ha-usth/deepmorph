@@ -67,7 +67,7 @@ python stage1_pretrain_mae.py
 
 Output: `checkpoints/mae_pretrain_final.pth` (~330MB for ViT-Base)
 
-**Estimated time**: 1–3 days on a single RTX 3090 GPU, depending on image count.
+**Estimated time**: 1h-48hs on a single RTX 3090 GPU, depending on image count.
 
 ### Stage 2: Few-shot Fine-tuning
 
