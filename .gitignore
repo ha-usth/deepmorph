@@ -1,6 +1,7 @@
 checkpoints/
-data_finetune/
+train_pool/
 data_predict/
-data_pretrain/
+data_whole/
 predictions/
 visualizations/
+stage2_dino_finetune_landmark.py

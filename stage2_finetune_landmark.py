@@ -31,7 +31,7 @@ from tqdm import tqdm
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from models.mae import mae_vit_base, mae_vit_small
 from models.landmark_head import WingLandmarkModel
-from models.imagenet_mae_loader import _interpolate_pos_embed
+from models.imagenet_mae_loader import _interpolate_pos_embed, _remap_keys
 from datasets.landmark_dataset import LandmarkDataset, select_few_shot_subset
 from utils import set_seed, heatmaps_to_coords, compute_MRE
 
@@ -39,8 +39,10 @@ from utils import set_seed, heatmaps_to_coords, compute_MRE
 # ============== RECOMMENDED CONFIG FOR 32GB GPU ==============
 CONFIG = {
     # Path to MAE checkpoint from Stage 1
-    'mae_checkpoint': './checkpoints/mae_pretrain_continue_final_all.pth',
-
+    'mae_checkpoint': './checkpoints/mae_pretrain_continue_final_all.pth', 
+    #'mae_checkpoint': './checkpoints/mae_pretrain_scratch_final.pth',  #Train MAE with bio, not use Imagenet --> not converge for droso_small 25 
+    #'mae_checkpoint': r'C:\Users\HoangHa\.cache\mae_imagenet\mae_pretrain_vit_base.pth',  #mae_pretrain_scratch_final for 
+             
     # ==== IMAGE SIZE: pretrain 224, finetune 512 ====
     'pretrain_image_size': 224,    # image_size used in stage 1
     'finetune_image_size': 512,    # image_size for stage 2 (higher = lower MRE)
@@ -50,11 +52,11 @@ CONFIG = {
     'sigma': 3,                  # scale with heatmap_size (sigma 2.0 for 96, 3.0 for 128)
 
     # Target dataset
-    'target_data_dir': './data_pretrain/sea_bass',
+    'target_data_dir': './data_finetune/cepha',
 
     # Few-shot setup
-    'n_shots': 100,              # number of labeled images for finetuning (3-15 recommended)
-    'num_landmarks': 11,
+    'n_shots': 5,              # number of labeled images for finetuning (3-15 recommended)
+    'num_landmarks': 19,
 
     # Model config
     'patch_size': 16,
@@ -85,19 +87,26 @@ CONFIG = {
 def load_pretrained_encoder_with_resize(checkpoint_path, target_image_size,
                                          model_size='base', verbose=True):
     """
-    Load MAE encoder from stage 1, interpolating pos_embed if target_image_size
-    differs from the pretrain image_size.
+    Load MAE encoder, interpolating pos_embed when target_image_size differs
+    from the pretrain image_size.
+
+    Supports two checkpoint formats automatically:
+      - Stage 1 checkpoint  : saved by stage1_pretrain_mae.py
+                              key = 'model_state_dict', our layer naming
+      - Facebook ImageNet   : official mae_pretrain_vit_base.pth from FAIR
+                              key = 'model', Facebook layer naming
+                              -> remapped automatically via _remap_keys()
 
     Args:
-        checkpoint_path: .pth file from stage 1
-        target_image_size: desired image_size for finetuning (e.g. 512)
+        checkpoint_path: path to .pth file (Stage 1 or ImageNet pretrain)
+        target_image_size: desired image size for finetuning (e.g. 512)
         model_size: 'base' or 'small'
-        verbose: print details
+        verbose: print loading details
     Returns:
         MAE model with loaded weights and resized pos_embed
     """
     if verbose:
-        print(f"\n=== Loading encoder from stage 1 ===")
+        print(f"\n=== Loading MAE encoder ===")
         print(f"  Checkpoint: {checkpoint_path}")
         print(f"  Target image_size: {target_image_size}")
 
@@ -107,40 +116,57 @@ def load_pretrained_encoder_with_resize(checkpoint_path, target_image_size,
     else:
         model = mae_vit_small(img_size=target_image_size)
 
-    # Load checkpoint
+    # Load raw checkpoint
     ckpt = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
-    state_dict = ckpt['model_state_dict']
 
-    # Infer pretrain size from config if available
-    if 'config' in ckpt and 'image_size' in ckpt['config']:
+    # ── Auto-detect checkpoint format ─────────────────────────────────────────
+    if 'model_state_dict' in ckpt:
+        # Stage 1 checkpoint (stage1_pretrain_mae.py output)
+        state_dict = ckpt['model_state_dict']
+        ckpt_type = 'stage1'
+    elif 'model' in ckpt:
+        # Facebook / ImageNet checkpoint — remap layer names to our convention
+        state_dict = _remap_keys(ckpt['model'], model)
+        ckpt_type = 'imagenet'
+    else:
+        # Bare state dict (no wrapper dict)
+        state_dict = ckpt
+        ckpt_type = 'raw'
+
+    if verbose:
+        print(f"  Checkpoint type: {ckpt_type}")
+
+    # ── Infer pretrain image size from pos_embed ───────────────────────────────
+    if 'config' in ckpt and 'image_size' in ckpt.get('config', {}):
         pretrain_size = ckpt['config']['image_size']
     else:
-        # Infer from pos_embed shape
-        old_pos_embed = state_dict['pos_embed']  # (1, num_patches+1, embed_dim)
-        old_num_patches = old_pos_embed.shape[1] - 1
-        old_grid = int(math.sqrt(old_num_patches))
-        pretrain_size = old_grid * 16  # patch_size = 16
+        old_pos_embed = state_dict.get('pos_embed')
+        if old_pos_embed is None:
+            # Fallback: assume ImageNet standard 224
+            pretrain_size = 224
+        else:
+            old_num_patches = old_pos_embed.shape[1] - 1  # subtract CLS token
+            old_grid = int(math.sqrt(old_num_patches))
+            pretrain_size = old_grid * 16  # patch_size = 16
 
     if verbose:
         print(f"  Pretrain image_size: {pretrain_size}")
 
-    # Interpolate pos_embed if sizes differ
+    # ── Interpolate pos_embed when sizes differ ────────────────────────────────
     if pretrain_size != target_image_size:
         if verbose:
             print(f"  Interpolating pos_embed: {pretrain_size} -> {target_image_size}")
 
-        target_pos_embed_shape = model.pos_embed.shape
-        state_dict['pos_embed'] = _interpolate_pos_embed(
-            state_dict['pos_embed'], target_pos_embed_shape
-        )
-
+        if 'pos_embed' in state_dict:
+            state_dict['pos_embed'] = _interpolate_pos_embed(
+                state_dict['pos_embed'], model.pos_embed.shape
+            )
         if 'decoder_pos_embed' in state_dict:
-            target_dec_pos_shape = model.decoder_pos_embed.shape
             state_dict['decoder_pos_embed'] = _interpolate_pos_embed(
-                state_dict['decoder_pos_embed'], target_dec_pos_shape
+                state_dict['decoder_pos_embed'], model.decoder_pos_embed.shape
             )
 
-    # Load weights
+    # ── Load weights ──────────────────────────────────────────────────────────
     msg = model.load_state_dict(state_dict, strict=False)
     if verbose:
         print(f"  Loaded encoder. Missing: {len(msg.missing_keys)}, "

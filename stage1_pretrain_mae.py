@@ -36,7 +36,8 @@ CONFIG = {
     # =========================================================================
     # PRETRAINING MODE (choose one)
     # =========================================================================
-    'pretrain_mode': 'continue_from_imagenet',  # or 'from_scratch'
+    # 'pretrain_mode': 'continue_from_imagenet',  # or 'from_scratch'
+    'pretrain_mode': 'from_scratch',  # or 'from_scratch'
 
     # Only used when mode = 'continue_from_imagenet'
     'imagenet_cache_dir': None,  # None = use ~/.cache/mae_imagenet
@@ -45,18 +46,16 @@ CONFIG = {
     # DATA
     # =========================================================================
     'data_dirs': [
-        # './data_pretrain/bactro',
-        # './data_pretrain/diacha',
-        # './data_pretrain/droso_big',
-        # './data_pretrain/droso-281',
-        # './data_pretrain/droso_small',
-        # './data_pretrain/fly',
-        # './data_pretrain/hindwing',
-        './data_pretrain/sea_bass',
-        # './data_pretrain/tsetse',
-        # './data_pretrain/cepha',
-        # './data_pretrain/cepha400',
-
+        './train_pool/bactro',
+        './train_pool/diacha',
+        './train_pool/droso_big',
+        './train_pool/droso-281',
+        './train_pool/droso_small',
+        './train_pool/fly',
+        './train_pool/hindwing',
+        './train_pool/sea_bass',
+        './train_pool/tsetse',
+        './train_pool/cepha'
     ],
     'image_size': 224,           # must be 224 if continue_from_imagenet
                                   # (or the model will interpolate pos_embed)
