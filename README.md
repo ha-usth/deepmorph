@@ -7,7 +7,7 @@ combining Self-Supervised Learning (MAE) and Few-shot Fine-tuning.
 
 ```
 [Stage 1] MAE Pretraining             [Stage 2] Few-shot Fine-tuning        [Stage 3] Predict
-  ~20K UNLABELED images    →              5 LABELED images       →            New images
+      UNLABELED images    →               LABELED images       →            New images
   (Droso-big, mosquito, ...)               (Bactro/Fly/...)                       ↓
         ↓                                        ↓                           .txt files
   Encoder weights                        Fine-tuned model                 (iMorph format)
