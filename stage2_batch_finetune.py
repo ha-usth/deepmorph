@@ -11,12 +11,14 @@ import sys
 import os
 
 # List of n_shots values to try
-n_shots_list = [3,5, 7, 10, 15, 20, 25]
+n_shots_list = [10]
 
 # Common arguments (adjust as needed)
-mae_checkpoint = './checkpoints/mae_pretrain_continue_final_all.pth'
-data_dir = './data_finetune/droso-281'
-num_landmarks = 12
+#mae_checkpoint = './checkpoints/finetune_best_n15_size512_drososmall.pth'
+#mae_checkpoint = './checkpoints/mae_pretrain_vit_base.pth'
+mae_checkpoint = './checkpoints/mae_pretrain_continue_final_droso_small.pth'
+data_dir = './data_finetune/droso-small'
+num_landmarks = 15
 finetune_image_size = 512
 heatmap_size = 128
 save_dir = './checkpoints'

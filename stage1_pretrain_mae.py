@@ -36,8 +36,8 @@ CONFIG = {
     # =========================================================================
     # PRETRAINING MODE (choose one)
     # =========================================================================
-    # 'pretrain_mode': 'continue_from_imagenet',  # or 'from_scratch'
-    'pretrain_mode': 'from_scratch',  # or 'from_scratch'
+    'pretrain_mode': 'continue_from_imagenet',  # or 'from_scratch'
+    #'pretrain_mode': 'from_scratch',  # or 'from_scratch'
 
     # Only used when mode = 'continue_from_imagenet'
     'imagenet_cache_dir': None,  # None = use ~/.cache/mae_imagenet
@@ -49,13 +49,14 @@ CONFIG = {
         './train_pool/bactro',
         './train_pool/diacha',
         './train_pool/droso_big',
+        #'./data_whole/droso_big',
         './train_pool/droso-281',
         './train_pool/droso_small',
         './train_pool/fly',
-        './train_pool/hindwing',
         './train_pool/sea_bass',
         './train_pool/tsetse',
         './train_pool/cepha'
+        #'./train_pool/droso_small-10'
     ],
     'image_size': 224,           # must be 224 if continue_from_imagenet
                                   # (or the model will interpolate pos_embed)
@@ -63,7 +64,7 @@ CONFIG = {
     # =========================================================================
     # TRAINING
     # =========================================================================
-    'batch_size': 32,
+    'batch_size': 8,
     'num_workers': 4,
     'lr': 1.5e-4,
     'weight_decay': 0.05,
@@ -74,7 +75,7 @@ CONFIG = {
 
     # Epoch count differs between modes:
     'epochs_from_scratch': 200,
-    'epochs_continue': 50,        # fewer epochs needed since already pretrained
+    'epochs_continue': 100,        # fewer epochs needed since already pretrained
 
     # =========================================================================
     # CHECKPOINTING

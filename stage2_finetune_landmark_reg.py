@@ -55,6 +55,10 @@ CONFIG = {
 
     'eval_every': 10,
 
+    # Smooth-L1 transition in normalized coordinate units (~10 px at 512).
+    # See regression_loss(): PyTorch's default of 1.0 is unusable here.
+    'loss_beta': 0.02,
+
     'save_dir': './checkpoints',
     'device': 'cuda' if torch.cuda.is_available() else 'cpu',
     'seed': 42,
@@ -65,17 +69,31 @@ CONFIG = {
 # Loss
 # ============================================================
 
-def regression_loss(pred_coords_norm, gt_coords, image_size):
+def regression_loss(pred_coords_norm, gt_coords, image_size, beta=0.02):
     """
     Smooth L1 loss on coordinates normalized to [0, 1].
+
+    beta is the transition point between the quadratic and the linear branch,
+    expressed in the same normalized units as the targets. PyTorch defaults it
+    to 1.0, which is larger than any residual can be here: every error would
+    stay on the quadratic branch, where the gradient equals the residual
+    itself. A 10 px error on a 1440 px-wide image is 0.007 in normalized
+    units, so the gradient would be 0.007 -- and the sigmoid on the head
+    multiplies it by at most 0.25 again. The head then barely moves within the
+    600 optimizer steps this schedule provides.
+
+    beta = 0.02 is about 10 px at the 512 px fine-tuning scale, so anything
+    coarser than that is optimized on the linear branch at full gradient
+    magnitude, and only the final sub-10-px refinement is quadratic.
 
     Args:
         pred_coords_norm : (B, K, 2) model output, sigmoid already applied
         gt_coords        : (B, K, 2) GT coordinates at image_size pixels
         image_size       : scalar used to normalize GT
+        beta             : smooth-L1 transition, in normalized coordinate units
     """
     gt_norm = gt_coords / image_size          # (B, K, 2) in [0, 1]
-    return F.smooth_l1_loss(pred_coords_norm, gt_norm)
+    return F.smooth_l1_loss(pred_coords_norm, gt_norm, beta=beta)
 
 
 # ============================================================
@@ -123,17 +141,33 @@ def load_pretrained_encoder_with_resize(checkpoint_path, target_image_size,
 
 
 def evaluate(model, dataloader, device, image_size):
-    """MRE at image_size scale (for fair comparison with heatmap variant)."""
+    """
+    MRE in pixels at the ORIGINAL image resolution.
+
+    This used to stop at the image_size scale, with a comment claiming that
+    made it comparable with the heatmap variant. It did the opposite: the
+    heatmap stage 2 rescales to the original resolution, so the two scripts
+    were reporting on different scales and the regression number came out
+    about 2.3x too small on a 1440x900 dataset -- exactly the ratio
+    sqrt(((1440/512)^2 + (900/512)^2) / 2). Any regression MRE read off this
+    function before this fix is not comparable with a heatmap MRE.
+    """
     model.eval()
     all_pred, all_gt = [], []
 
     with torch.no_grad():
         for batch in dataloader:
-            imgs      = batch['image'].to(device)
-            gt_coords = batch['coords']              # (B, K, 2) at image_size
+            imgs       = batch['image'].to(device)
+            gt_coords  = batch['coords']             # (B, K, 2) at image_size
+            orig_sizes = batch['orig_size']          # (B, 2) = [orig_w, orig_h]
 
             pred_norm = model(imgs)                  # (B, K, 2) in [0, 1]
-            pred_px   = pred_norm.cpu() * image_size # back to pixel scale
+            pred_px   = pred_norm.cpu() * image_size # image_size scale
+
+            # Same rescaling the heatmap variant applies.
+            scale_to_orig = (orig_sizes / image_size).unsqueeze(1)   # (B, 1, 2)
+            pred_px   = pred_px * scale_to_orig
+            gt_coords = gt_coords * scale_to_orig
 
             all_pred.append(pred_px)
             all_gt.append(gt_coords)
@@ -146,7 +180,8 @@ def evaluate(model, dataloader, device, image_size):
     return compute_MRE(all_pred, all_gt)
 
 
-def train_one_epoch(model, dataloader, optimizer, device, image_size, accum_steps=1):
+def train_one_epoch(model, dataloader, optimizer, device, image_size,
+                    accum_steps=1, beta=0.02):
     model.train()
     total_loss = 0.0
     optimizer.zero_grad()
@@ -156,7 +191,8 @@ def train_one_epoch(model, dataloader, optimizer, device, image_size, accum_step
         gt_coords = batch['coords'].to(device)  # (B, K, 2) at image_size
 
         pred_norm = model(imgs)
-        loss = regression_loss(pred_norm, gt_coords, image_size) / accum_steps
+        loss = regression_loss(pred_norm, gt_coords, image_size,
+                               beta=beta) / accum_steps
         loss.backward()
 
         if (batch_idx + 1) % accum_steps == 0:
@@ -260,6 +296,7 @@ def main():
             model, train_loader, optimizer, config['device'],
             image_size=config['finetune_image_size'],
             accum_steps=config['gradient_accumulation_steps'],
+            beta=config.get('loss_beta', 0.02),
         )
 
         if (epoch + 1) % config['eval_every'] == 0:
@@ -305,7 +342,7 @@ def main():
     print(f"\n=== FINAL RESULTS (Regression) ===")
     print(f"  N-shot         : {config['n_shots']}")
     print(f"  Image size     : {config['finetune_image_size']}")
-    print(f"  Best MRE      : {best_MRE:.2f} px  (at {config['finetune_image_size']}px scale)")
+    print(f"  Best MRE      : {best_MRE:.2f} px  (at original image resolution)")
 
 
 if __name__ == '__main__':

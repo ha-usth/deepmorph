@@ -27,16 +27,19 @@ from utils import heatmaps_to_coords, compute_MRE
 
 # ============== CONFIGURATION ==============
 CONFIG = {
-    'finetune_checkpoint': './checkpoints/finetune_tsetse_best_n20_size512.pth',
-    'input_dir': './data_predict/tsetse',     # directory of images to predict
-    'output_dir': './predictions/tsetse',     # directory to save .txt files
+    #'finetune_checkpoint': './checkpoints/finetune_best_n20_size512-sea_bass-noSSL.pth',
+    'finetune_checkpoint': './checkpoints/finetune_best_n10_size512.pth',    
+    #'finetune_checkpoint': './checkpoints/finetune_best_n10_size512-exclude-droso_small.pth',
+    
+    'input_dir': './test_set/droso_small',     # directory of images to predict
+    'output_dir': './predictions/droso-small',     # directory to save .txt files
 
     # Must match training config
     'image_size': 512,
     'heatmap_size': 128,   # 384 / 4 = 96
     'patch_size': 16,
     'embed_dim': 768,
-    'num_landmarks': 11,
+    'num_landmarks': 15,
     'model_size': 'base',
 
     'device': 'cuda' if torch.cuda.is_available() else 'cpu',

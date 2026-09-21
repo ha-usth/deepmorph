@@ -39,7 +39,11 @@ from utils import set_seed, heatmaps_to_coords, compute_MRE
 # ============== RECOMMENDED CONFIG FOR 32GB GPU ==============
 CONFIG = {
     # Path to MAE checkpoint from Stage 1
-    'mae_checkpoint': './checkpoints/mae_pretrain_continue_final_all.pth', 
+    #'mae_checkpoint' : './checkpoints/mae_pretrain_vit_base.pth',
+    #'mae_checkpoint' : './checkpoints/mae_pretrain_continue_final-all-bigwhole.pth',    
+    'mae_checkpoint' : './checkpoints/mae_pretrain_continue_final-few.pth',
+    #'mae_checkpoint': './checkpoints/mae_pretrain_continue_final-exclude-droso_small.pth', 
+    #'mae_checkpoint' : './checkpoints/mae_pretrain_continue_final_droso_small.pth',        
     #'mae_checkpoint': './checkpoints/mae_pretrain_scratch_final.pth',  #Train MAE with bio, not use Imagenet --> not converge for droso_small 25 
     #'mae_checkpoint': r'C:\Users\HoangHa\.cache\mae_imagenet\mae_pretrain_vit_base.pth',  #mae_pretrain_scratch_final for 
              
@@ -52,11 +56,11 @@ CONFIG = {
     'sigma': 3,                  # scale with heatmap_size (sigma 2.0 for 96, 3.0 for 128)
 
     # Target dataset
-    'target_data_dir': './data_finetune/cepha',
+    'target_data_dir': './train_pool/droso_small',  # directory containing labeled images for finetuning``
 
     # Few-shot setup
-    'n_shots': 5,              # number of labeled images for finetuning (3-15 recommended)
-    'num_landmarks': 19,
+    'n_shots': 10,              # number of labeled images for finetuning (3-15 recommended)
+    'num_landmarks': 15,
 
     # Model config
     'patch_size': 16,

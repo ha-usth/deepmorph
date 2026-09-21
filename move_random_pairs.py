@@ -73,7 +73,13 @@ def parse_args():
         "--percent",
         type=float,
         default=20.0,
-        help="Percentage of matched pairs to move (default: 20).",
+        help="Percentage of matched pairs to move (default: 20). Ignored when --amount is set.",
+    )
+    parser.add_argument(
+        "--amount",
+        type=int,
+        default=None,
+        help="Exact number of matched pairs to move. Overrides --percent when set.",
     )
     parser.add_argument(
         "--seed",
@@ -113,14 +119,24 @@ def main():
         print("No matched .jpg and .txt file pairs found in source folder.")
         return
 
-    num_to_copy = math.floor(total_pairs * args.percent / 100.0)
-    if num_to_copy < args.min_count:
-        num_to_copy = min(args.min_count, total_pairs)
+    if args.amount is not None:
+        if args.amount < 0:
+            raise ValueError("--amount must be a non-negative integer.")
+        num_to_copy = min(args.amount, total_pairs)
+        if num_to_copy == 0:
+            print("No pairs selected; --amount was 0 or the source folder had no pairs.")
+            return
+        selection_label = f"exactly {num_to_copy} pairs"
+    else:
+        num_to_copy = math.floor(total_pairs * args.percent / 100.0)
+        if num_to_copy < args.min_count:
+            num_to_copy = min(args.min_count, total_pairs)
+        selection_label = f"{args.percent}% of total ({num_to_copy} pairs)"
 
     selected = random.sample(pairs, num_to_copy)
 
     print(f"Found {total_pairs} matched pairs.")
-    print(f"Selecting {num_to_copy} pairs ({args.percent}% of total).\n")
+    print(f"Selecting {selection_label}.\n")
 
     for base in selected:
         print(f"  {base}.jpg + {base}.txt")
