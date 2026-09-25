@@ -2,9 +2,10 @@ checkpoints/
 train_pool/
 data_predict/
 data_whole/
+test_set/
+results/
 predictions/
 visualizations/
-results/
 stage2_dino_finetune_landmark.py
 e4_significance.py
 e3_dinov2_eval.py
