@@ -1,7 +1,7 @@
 """
 e2_finetune_eval.py - EXPERIMENT 2: Stage 2 + Stage 3 under the Stage 1 protocols
 
-Takes the checkpoints produced by e1_pretrain_mae.py (P0/P1/P2), runs
+Takes the checkpoints produced by e1_pretrain_mae.py (PC/PA/PB), runs
 stage2_finetune_landmark.py then stage3_predict.py on a target dataset, and
 reports two metrics as mean +/- std over repeated runs:
 
@@ -51,16 +51,16 @@ WHY EACH REPEAT RE-RUNS STAGE 2
 Usage:
     python e2_finetune_eval.py                       # droso_small, 10 repeats
     python e2_finetune_eval.py --dataset droso_small sea_bass cepha
-    python e2_finetune_eval.py --dataset sea_bass --protocols P0 P1
-    python e2_finetune_eval.py --ckpt ./checkpoints/mae_P1_s0_best.pth --label P1
+    python e2_finetune_eval.py --dataset sea_bass --protocols PC PA
+    python e2_finetune_eval.py --ckpt ./checkpoints/mae_PA_s0_best.pth --label PA
     python e2_finetune_eval.py --n-shots 1 3 6 11 20 --repeats 3
     python e2_finetune_eval.py --force            # ignore cached results, rerun
 
-Each dataset needs its own P2 checkpoint, since P2 is defined by holding that
+Each dataset needs its own PB checkpoint, since PB is defined by holding that
 dataset out of the Stage 1 pool:
 
-    python e1_pretrain_mae.py --protocol P2 --exclude ./train_pool/sea_bass
-    python e1_pretrain_mae.py --protocol P2 --exclude ./train_pool/cepha
+    python e1_pretrain_mae.py --protocol PB --exclude ./train_pool/sea_bass
+    python e1_pretrain_mae.py --protocol PB --exclude ./train_pool/cepha
 """
 import os
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
@@ -163,15 +163,15 @@ CONFIG = {
 
     # =========================================================================
     # STAGE 1 PROTOCOLS -> checkpoint produced by e1_pretrain_mae.py
-    # '{dataset}' is substituted per target. P2 needs it because its pool is
-    # defined by which dataset was held out; P0 and P1 share one pool.
+    # '{dataset}' is substituted per target. PB needs it because its pool is
+    # defined by which dataset was held out; PC and PA share one pool.
     # Missing files are skipped with a warning, so you can start with whichever
     # protocols you have already pretrained.
     # =========================================================================
     'protocols': {
-        'P0': './checkpoints/mae_P0_s0_imagenet_only.pth',
-        'P1': './checkpoints/mae_P1_s0_best.pth',
-        'P2': './checkpoints/mae_P2_{dataset}_s0_best.pth',
+        'PC': './checkpoints/mae_PC_s0_imagenet_only.pth',
+        'PA': './checkpoints/mae_PA_s0_best.pth',
+        'PB': './checkpoints/mae_PB_{dataset}_s0_best.pth',
         'PS': './checkpoints/mae_PS_s0_best.pth',
     },
 
@@ -186,7 +186,7 @@ CONFIG = {
     # REPEATS
     # =========================================================================
     'n_shots': [15],              # default; a dataset entry may override it
-    'repeats': 5,                 # seeds 0..repeats-1
+    'repeats': 10,                 # seeds 0..repeats-1
     'seed_base': 0,
 
     # =========================================================================
@@ -508,11 +508,11 @@ def _per_landmark_table(summary, prefix, title, digits=1):
         return
     print(f"\nPer-landmark {title} (mean over runs)")
     k = len(rows[0][f'{prefix}_per_lm_mean'])
-    print(f"{'protocol':<10}{'head':<12}{'N':>4}"
+    print(f"{'protocol':<14}{'head':<12}{'N':>4}"
           + "".join(f"{i + 1:>7}" for i in range(k)))
     for s in rows:
         cells = "".join(f"{v:>7.{digits}f}" for v in s[f'{prefix}_per_lm_mean'])
-        print(f"{s['protocol']:<10}{s.get('head', 'heatmap'):<12}"
+        print(f"{s['protocol']:<14}{s.get('head', 'heatmap'):<12}"
               f"{s['n_shots']:>4}{cells}")
 
 
@@ -520,7 +520,7 @@ def print_summary(summary, config):
     print("\n" + "=" * 86)
     print(f"Results on {config['test_dir']}  (lower is better)")
     print("=" * 86)
-    print(f"{'protocol':<10}{'head':<12}{'N':>4}{'runs':>6}"
+    print(f"{'protocol':<14}{'head':<12}{'N':>4}{'runs':>6}"
           f"{'MRE px mean +/- std':>24}{'NME % mean +/- std':>24}{'val':>8}")
     print("-" * 86)
     odd_scale = False
@@ -531,7 +531,7 @@ def print_summary(summary, config):
             mark = '' if s.get('val_mre_scale', 'original') == 'original' else '*'
             odd_scale |= bool(mark)
             val = f"{s['val_mre_mean']:.2f}{mark}"
-        print(f"{s['protocol']:<10}{s.get('head', 'heatmap'):<12}"
+        print(f"{s['protocol']:<14}{s.get('head', 'heatmap'):<12}"
               f"{s['n_shots']:>4}{s['runs']:>6}"
               f"{_cell(s, 'mre'):>24}{_cell(s, 'nme', 3):>24}{val:>8}")
     print("-" * 86)
@@ -606,7 +606,7 @@ def parse_args():
                    help="target dataset(s) from CONFIG['datasets'], "
                         "e.g. droso_small sea_bass cepha")
     p.add_argument('--protocols', nargs='*', default=None,
-                   help="subset of CONFIG['protocols'] to run, e.g. P0 P1")
+                   help="subset of CONFIG['protocols'] to run, e.g. PC PA")
     p.add_argument('--ckpt', default=None,
                    help="run one arbitrary Stage 1 checkpoint instead")
     p.add_argument('--label', default=None,
@@ -891,7 +891,7 @@ def print_combined(all_summary):
     print("\n" + "=" * 92)
     print("ALL DATASETS - mean +/- std over seeds")
     print("=" * 92)
-    print(f"{'dataset':<14}{'protocol':<10}{'head':<12}{'N':>4}{'runs':>6}"
+    print(f"{'dataset':<14}{'protocol':<14}{'head':<12}{'N':>4}{'runs':>6}"
           f"{'MRE px':>22}{'NME %':>22}")
     print("-" * 92)
     last = None
@@ -900,7 +900,7 @@ def print_combined(all_summary):
                                    s['n_shots'], s['protocol'])):
         label = s['dataset'] if s['dataset'] != last else ''
         last = s['dataset']
-        print(f"{label:<14}{s['protocol']:<10}{s.get('head', 'heatmap'):<12}"
+        print(f"{label:<14}{s['protocol']:<14}{s.get('head', 'heatmap'):<12}"
               f"{s['n_shots']:>4}{s['runs']:>6}"
               f"{_cell(s, 'mre'):>22}{_cell(s, 'nme', 3):>22}")
     print("-" * 92)

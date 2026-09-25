@@ -4,4 +4,7 @@ data_predict/
 data_whole/
 predictions/
 visualizations/
+results/
 stage2_dino_finetune_landmark.py
+e4_significance.py
+e3_dinov2_eval.py

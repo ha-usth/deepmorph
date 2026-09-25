@@ -5,9 +5,9 @@ Answers the reviewer question "if a new rare species has only 10 images, would
 this approach still hold?" by making the Stage 1 pretraining pool an explicit,
 swappable variable:
 
-    P0  imagenet_only   no domain pretraining at all (MAE-ImageNet as-is)
-    P1  full pool       all biological data, target dataset INCLUDED
-    P2  leave-one-out   all biological data, target dataset EXCLUDED
+    PC  imagenet_only   no domain pretraining at all (MAE-ImageNet as-is)
+    PA  full pool       all biological data, target dataset INCLUDED
+    PB  leave-one-out   all biological data, target dataset EXCLUDED
 
 All three write a checkpoint in the same format, so stage2_finetune_landmark.py
 consumes them interchangeably via its 'mae_checkpoint' config key.
@@ -25,20 +25,20 @@ regime where the goal is to gain domain knowledge WITHOUT forgetting ImageNet:
     - EMA weights, and WiSE checkpoints interpolating back toward ImageNet
     - byte-level leakage guard against the test set
 
-P2 depends on which dataset was held out, so its target name goes into the
-filename; P0 and P1 share one pool across every target and keep the short name:
+PB depends on which dataset was held out, so its target name goes into the
+filename; PC and PA share one pool across every target and keep the short name:
 
-    mae_P0_s0_imagenet_only.pth
-    mae_P1_s0_best.pth
-    mae_P2_droso_small_s0_best.pth
-    mae_P2_sea_bass_s0_best.pth
+    mae_PC_s0_imagenet_only.pth
+    mae_PA_s0_best.pth
+    mae_PB_droso_small_s0_best.pth
+    mae_PB_sea_bass_s0_best.pth
 
 Usage:
     python e1_pretrain_mae.py                          # uses CONFIG below
-    python e1_pretrain_mae.py --protocol P0
-    python e1_pretrain_mae.py --protocol P2 --exclude ./train_pool/droso_small
-    python e1_pretrain_mae.py --protocol P2 --exclude ./train_pool/sea_bass
-    python e1_pretrain_mae.py --protocol P1 --total-steps 4000 --seed 1
+    python e1_pretrain_mae.py --protocol PC
+    python e1_pretrain_mae.py --protocol PB --exclude ./train_pool/droso_small
+    python e1_pretrain_mae.py --protocol PB --exclude ./train_pool/sea_bass
+    python e1_pretrain_mae.py --protocol PA --total-steps 4000 --seed 1
 """
 import os
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
@@ -76,10 +76,10 @@ CONFIG = {
     # =========================================================================
     # PROTOCOL
     # =========================================================================
-    'protocol': 'P1',             # P0/P1/P2 — tag only, drives the filename
+    'protocol': 'PA',             # PC/PA/PB — tag only, drives the filename
     'pretrain_mode': 'continue_from_imagenet',
-                                  # 'continue_from_imagenet' : P1/P2
-                                  # 'imagenet_only'          : P0, exports the
+                                  # 'continue_from_imagenet' : PA/PB
+                                  # 'imagenet_only'          : PC, exports the
                                   #     ImageNet checkpoint in stage-1 format
                                   #     without training (no GPU time needed)
                                   # 'from_scratch'           : ablation
@@ -101,13 +101,13 @@ CONFIG = {
     ],
 
     # Name of the downstream target dataset. It goes into the checkpoint
-    # filename, because a P2 pool depends on WHICH dataset was held out:
-    # without it, P2-for-droso_small and P2-for-sea_bass overwrite each other.
-    # None = derive it from exclude_dirs (P0/P1 need no tag, their pool is the
+    # filename, because a PB pool depends on WHICH dataset was held out:
+    # without it, PB-for-droso_small and PB-for-sea_bass overwrite each other.
+    # None = derive it from exclude_dirs (PC/PA need no tag, their pool is the
     # same whatever the target is).
     'target': None,
 
-    # P2: directories dropped from the pool. Any pool path containing one of
+    # PB: directories dropped from the pool. Any pool path containing one of
     # these strings is removed, so './train_pool/droso_small' is enough.
     'exclude_dirs': [],
 
@@ -181,7 +181,7 @@ CONFIG = {
     'ema_decay': 0.999,           # 0 to disable
     'wise_alphas': [0.25, 0.5, 0.75],
                                   # theta = a*theta_domain + (1-a)*theta_imagenet
-                                  # a=0 is P0, a=1 is the trained model.
+                                  # a=0 is PC, a=1 is the trained model.
                                   # Sweeping a gives a direct measurement of how
                                   # much ImageNet generality is worth keeping.
 
@@ -295,7 +295,7 @@ def build_pool(config):
     n_raw = len(paths)
     print(f"  Listed {n_raw} images from {len(config['data_dirs'])} directories")
 
-    # ---- protocol exclusion (P2) --------------------------------------------
+    # ---- protocol exclusion (PB) --------------------------------------------
     excluded = []
     if config['exclude_dirs']:
         keys = [str(Path(d)).replace('\\', '/').lstrip('./')
@@ -670,14 +670,14 @@ def save_checkpoint(path, state_dict, config, extra=None):
 def parse_args():
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument('--protocol', choices=['P0', 'P1', 'P2', 'PS'],
-                   help="P0 exports ImageNet as-is; P1/P2 continue from it; "
+    p.add_argument('--protocol', choices=['PC', 'PA', 'PB', 'PS'],
+                   help="PC exports ImageNet as-is; PA/PB continue from it; "
                         "PS trains from scratch on biological images only.")
     p.add_argument('--target', default=None,
                    help="downstream dataset name, written into the checkpoint "
                         "filename (default: derived from --exclude)")
     p.add_argument('--exclude', nargs='*', default=None,
-                   help="directories to drop from the pool (P2)")
+                   help="directories to drop from the pool (PB)")
     p.add_argument('--include', nargs='*', default=None,
                    help="extra directories to append to the pool")
     p.add_argument('--total-steps', type=int, default=None)
@@ -695,9 +695,9 @@ def apply_args(config, args):
     if args.protocol:
         config['protocol'] = args.protocol
         config['pretrain_mode'] = {
-            'P0': 'imagenet_only',
-            'P1': 'continue_from_imagenet',
-            'P2': 'continue_from_imagenet',
+            'PC': 'imagenet_only',
+            'PA': 'continue_from_imagenet',
+            'PB': 'continue_from_imagenet',
             'PS': 'from_scratch',
         }[args.protocol]
     if args.exclude is not None:
@@ -721,8 +721,8 @@ def main():
     set_seed(config['seed'])
     os.makedirs(config['save_dir'], exist_ok=True)
 
-    # A P2 checkpoint is only meaningful together with the dataset it held out,
-    # so the target name belongs in the filename. P0/P1 pools are independent of
+    # A PB checkpoint is only meaningful together with the dataset it held out,
+    # so the target name belongs in the filename. PC/PA pools are independent of
     # the target and keep the shorter name.
     target = config.get('target')
     if target is None and config['exclude_dirs']:
@@ -777,13 +777,13 @@ def main():
     print(f"  AMP            : {config['amp']} on {device}")
     print()
 
-    # ---- P0: no training, just re-export ImageNet in stage-1 format ----------
+    # ---- PC: no training, just re-export ImageNet in stage-1 format ----------
     if config['pretrain_mode'] == 'imagenet_only':
         model, _ = build_model(config)
         path = f"{prefix}_imagenet_only.pth"
         save_checkpoint(path, model.state_dict(), config,
-                        extra={'step': 0, 'note': 'no domain pretraining (P0)'})
-        print(f"\n[OK] P0 baseline ready. Point stage 2 at:\n    {path}")
+                        extra={'step': 0, 'note': 'no domain pretraining (PC)'})
+        print(f"\n[OK] PC baseline ready. Point stage 2 at:\n    {path}")
         return
 
     # ---- pool ---------------------------------------------------------------
