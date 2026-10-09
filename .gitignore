@@ -6,6 +6,8 @@ test_set/
 results/
 predictions/
 visualizations/
+.experiment_deps/
 stage2_dino_finetune_landmark.py
-e4_significance.py
 e3_dinov2_eval.py
+e4_significance.py
+e5_landmark_errors.py
